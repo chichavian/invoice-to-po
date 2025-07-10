@@ -1,10 +1,10 @@
 # app.py
-# This CLI-compatible fallback version avoids Streamlit dependency
+# Interactive CLI app with menu-based PDF selection
 import sys
 import os
 from pathlib import Path
 
-# Ensure current working directory is in sys.path to allow relative imports
+# Ensure local imports work
 current_dir = Path(__file__).parent if '__file__' in globals() else Path().resolve()
 sys.path.append(str(current_dir))
 
@@ -22,12 +22,35 @@ def detect_distributor(text):
         return "ILO"
     return None
 
-def main(path):
-    if not os.path.isfile(path):
-        print(f"[ERROR] File not found: {path}")
+def list_pdf_files(folder):
+    return sorted([f for f in os.listdir(folder) if f.lower().endswith(".pdf")])
+
+def choose_file_menu(pdf_files):
+    print("\nAvailable Invoices:\n")
+    for idx, fname in enumerate(pdf_files, start=1):
+        print(f"[{idx}] {fname}")
+    while True:
+        try:
+            choice = int(input("\nChoose a file [1-{}]: ".format(len(pdf_files))))
+            if 1 <= choice <= len(pdf_files):
+                return pdf_files[choice - 1]
+        except ValueError:
+            pass
+        print("Invalid choice. Try again.")
+
+def main():
+    folder = "invoices"
+    os.makedirs(folder, exist_ok=True)
+
+    pdf_files = list_pdf_files(folder)
+    if not pdf_files:
+        print("[ERROR] No PDF files found in 'invoices/' folder.")
         return
 
-    with open(path, "rb") as f:
+    selected_file = choose_file_menu(pdf_files)
+    pdf_path = os.path.join(folder, selected_file)
+
+    with open(pdf_path, "rb") as f:
         raw_text = extract_text_from_pdf(f)
         print("\n--- RAW TEXT PREVIEW ---\n")
         print(raw_text[:1000])
@@ -51,7 +74,4 @@ def main(path):
         pprint(data)
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python app.py path_to_invoice.pdf")
-    else:
-        main(sys.argv[1])
+    main()
