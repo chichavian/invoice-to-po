@@ -22,23 +22,26 @@ def parse_ilo_invoice(text):
     if match:
         invoice_data["po_number"] = match.group(1)
 
+    # Updated pattern to capture SKU in bold + game name after it
     item_pattern = re.compile(
-        r"(\S+)\s+([A-Za-z0-9 :\-\(\)\[\]\'/éÉèÈàÀêÊçÇ]+)\s+\d+\.\d{2}\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d{1,3},\d{2})",
+        r"(?P<sku>[A-Z0-9\-]+)\s+(?P<name>[A-Za-z0-9 :\-\(\)\[\]\'/éÉèÈàÀêÊçÇ]+)\s+\d+\.\d{2}\s+(?P<ordered>\d+)\s+(?P<shipped>\d+)\s+(?P<backordered>\d+)\s+(?P<unit_price>\d{1,3},\d{2})",
         re.MULTILINE
     )
 
     for match in item_pattern.finditer(text):
-        sku, name, q_ordered, q_shipped, q_back, unit_price = match.groups()
-        q_ordered, q_shipped, q_back = int(q_ordered), int(q_shipped), int(q_back)
+        data = match.groupdict()
+        q_ordered = int(data["ordered"])
+        q_shipped = int(data["shipped"])
+        q_back = int(data["backordered"])
 
         if q_shipped > 0:
             invoice_data["items"].append({
-                "sku": sku,
-                "name": name.strip(),
+                "sku": data["sku"],
+                "name": data["name"].strip(),
                 "quantity_ordered": q_ordered,
                 "quantity_shipped": q_shipped,
                 "quantity_backordered": q_back,
-                "unit_price": float(unit_price.replace(",", "."))
+                "unit_price": float(data["unit_price"].replace(",", "."))
             })
 
     return invoice_data
